@@ -1,21 +1,33 @@
+
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-
 local LocalPlayer = Players.LocalPlayer
-
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "NextKillerStandalone"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = game.CoreGui
 
--- Smooth Drag
 local function MakeDraggable(frame)
     local dragging = false
     local dragStart
     local startPos
 
+    local function Update(input)
+        local delta = input.Position - dragStart
+
+        frame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+
     frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
@@ -28,30 +40,34 @@ local function MakeDraggable(frame)
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - dragStart
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
 
-            frame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging then
+            if input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch then
+                Update(input)
+            end
         end
     end)
 end
 
+-- FRAME
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,220,0,30)
-
--- Posisi nyambung sama InfoGui
+frame.Name = "NextKillerFrame"
+frame.Size = UDim2.new(0,170,0,30)
 frame.Position = UDim2.new(0,538,0,10)
 
 frame.BackgroundColor3 = Color3.fromRGB(14,14,14)
 frame.BackgroundTransparency = 0.15
 frame.BorderSizePixel = 0
 frame.Active = true
+frame.Selectable = true
 frame.Parent = screenGui
 
 local corner = Instance.new("UICorner")
@@ -72,7 +88,9 @@ gradient.Color = ColorSequence.new{
 gradient.Rotation = 90
 gradient.Parent = frame
 
+-- LABEL
 local label = Instance.new("TextLabel")
+label.Name = "Label"
 label.Size = UDim2.new(1,-16,1,0)
 label.Position = UDim2.new(0,8,0,0)
 label.BackgroundTransparency = 1
@@ -86,6 +104,7 @@ label.Parent = frame
 
 MakeDraggable(frame)
 
+-- GET NEXT KILLER
 local function GetNextKillerName()
     local players = Players:GetPlayers()
 
@@ -133,6 +152,7 @@ local function GetNextKillerName()
     return nk.Name
 end
 
+-- UPDATE
 local function Update()
     pcall(function()
         local team = LocalPlayer.Team
