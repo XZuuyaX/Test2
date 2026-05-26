@@ -1,18 +1,18 @@
--- Next Killer Standalone GUI (LoadString version)
+-- Next Killer Standalone (FIX for loadstring)
 -- Press 'M' to toggle visibility
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+-- GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "NextKillerStandalone"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 180, 0, 30)
+frame.Size = UDim2.new(0, 200, 0, 32)
 frame.Position = UDim2.new(0, 10, 0, 150)
 frame.BackgroundTransparency = 0.6
 frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
@@ -28,20 +28,24 @@ label.TextSize = 14
 label.TextColor3 = Color3.fromRGB(255,80,80)
 label.Text = "Next Killer: ..."
 label.TextXAlignment = Enum.TextXAlignment.Left
+label.TextTruncate = Enum.TextTruncate.None
 label.Parent = frame
 
 local function GetNextKillerName()
     local players = Players:GetPlayers()
     if #players == 0 then return "Unknown" end
-    table.sort(players, function(a,b)
-        local aA = a:GetAttribute("AllowKiller") == true
-        local bA = b:GetAttribute("AllowKiller") == true
-        if aA ~= bA then return aA end
-        local aC = tonumber(a:GetAttribute("KillerChance")) or 0
-        local bC = tonumber(b:GetAttribute("KillerChance")) or 0
-        return aC > bC
+    local sorted = {}
+    for _, p in ipairs(players) do
+        local allow = p:GetAttribute("AllowKiller") == true
+        local chance = tonumber(p:GetAttribute("KillerChance")) or 0
+        table.insert(sorted, {p=p, allow=allow, chance=chance})
+    end
+    table.sort(sorted, function(a,b)
+        if a.allow ~= b.allow then return a.allow end
+        return a.chance > b.chance
     end)
-    local nk = players[1]
+    local nk = sorted[1] and sorted[1].p
+    if not nk then return "Unknown" end
     if nk == LocalPlayer then return "YOU" end
     local killerName = nk:GetAttribute("SelectedKiller")
     if killerName and killerName ~= "" then return tostring(killerName) end
@@ -49,26 +53,52 @@ local function GetNextKillerName()
 end
 
 local function Update()
-    local role = (LocalPlayer.Team and LocalPlayer.Team.Name == "Killer" and "Killer") or (LocalPlayer.Team and LocalPlayer.Team.Name == "Survivors" and "Survivor") or "Spectator"
-    if role == "Spectator" then
-        local nextName = GetNextKillerName()
-        label.Text = "Next Killer: " .. nextName
-        label.TextColor3 = nextName == "YOU" and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,80,80)
-    else
-        label.Text = "Next Killer: InMatch"
-        label.TextColor3 = Color3.fromRGB(255,80,80)
+    local success, err = pcall(function()
+        local team = LocalPlayer.Team
+        local role = "Spectator"
+        if team then
+            if team.Name == "Killer" then role = "Killer"
+            elseif team.Name == "Survivors" then role = "Survivor"
+            end
+        end
+        if role == "Spectator" then
+            local nextName = GetNextKillerName()
+            label.Text = "Next Killer: " .. nextName
+            label.TextColor3 = nextName == "YOU" and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,80,80)
+            print("[NextKiller] Updated: " .. label.Text) -- DEBUG
+        else
+            label.Text = "Next Killer: InMatch"
+            label.TextColor3 = Color3.fromRGB(255,80,80)
+        end
+    end)
+    if not success then
+        label.Text = "Next Killer: Error"
+        warn("[NextKiller] Error: " .. tostring(err))
     end
 end
 
-local conn = RunService.Heartbeat:Connect(function()
-    pcall(Update)
+-- Update loop setiap 1 detik (lebih stabil)
+local updateTask
+updateTask = task.spawn(function()
+    while true do
+        task.wait(1)
+        Update()
+    end
 end)
 
-local inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+-- Toggle visibility dengan tombol M
+local inputConn
+inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.M then
         frame.Visible = not frame.Visible
     end
 end)
+
+-- Simpan referensi untuk cleanup nanti
+screenGui._cleanup = {
+    task = updateTask,
+    conn = inputConn
+}
 
 return screenGui
