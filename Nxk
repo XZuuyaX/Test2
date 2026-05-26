@@ -1,0 +1,74 @@
+-- Next Killer Standalone GUI (LoadString version)
+-- Press 'M' to toggle visibility
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "NextKillerStandalone"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = game.CoreGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 180, 0, 30)
+frame.Position = UDim2.new(0, 10, 0, 150)
+frame.BackgroundTransparency = 0.6
+frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+frame.BorderSizePixel = 0
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+frame.Parent = screenGui
+
+local label = Instance.new("TextLabel")
+label.Size = UDim2.new(1,0,1,0)
+label.BackgroundTransparency = 1
+label.Font = Enum.Font.GothamBold
+label.TextSize = 14
+label.TextColor3 = Color3.fromRGB(255,80,80)
+label.Text = "Next Killer: ..."
+label.TextXAlignment = Enum.TextXAlignment.Left
+label.Parent = frame
+
+local function GetNextKillerName()
+    local players = Players:GetPlayers()
+    if #players == 0 then return "Unknown" end
+    table.sort(players, function(a,b)
+        local aA = a:GetAttribute("AllowKiller") == true
+        local bA = b:GetAttribute("AllowKiller") == true
+        if aA ~= bA then return aA end
+        local aC = tonumber(a:GetAttribute("KillerChance")) or 0
+        local bC = tonumber(b:GetAttribute("KillerChance")) or 0
+        return aC > bC
+    end)
+    local nk = players[1]
+    if nk == LocalPlayer then return "YOU" end
+    local killerName = nk:GetAttribute("SelectedKiller")
+    if killerName and killerName ~= "" then return tostring(killerName) end
+    return nk.Name
+end
+
+local function Update()
+    local role = (LocalPlayer.Team and LocalPlayer.Team.Name == "Killer" and "Killer") or (LocalPlayer.Team and LocalPlayer.Team.Name == "Survivors" and "Survivor") or "Spectator"
+    if role == "Spectator" then
+        local nextName = GetNextKillerName()
+        label.Text = "Next Killer: " .. nextName
+        label.TextColor3 = nextName == "YOU" and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,80,80)
+    else
+        label.Text = "Next Killer: InMatch"
+        label.TextColor3 = Color3.fromRGB(255,80,80)
+    end
+end
+
+local conn = RunService.Heartbeat:Connect(function()
+    pcall(Update)
+end)
+
+local inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.M then
+        frame.Visible = not frame.Visible
+    end
+end)
+
+return screenGui
