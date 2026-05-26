@@ -1,5 +1,4 @@
--- Next Killer Standalone (FIX for loadstring)
--- Press 'M' to toggle visibility
+
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -12,16 +11,20 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 32)
-frame.Position = UDim2.new(0, 10, 0, 150)
-frame.BackgroundTransparency = 0.6
+frame.Size = UDim2.new(0, 220, 0, 36)
+frame.Position = UDim2.new(1, -230, 0, 10) -- pojok kanan atas
+frame.BackgroundTransparency = 0.5
 frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
 frame.BorderSizePixel = 0
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+frame.Draggable = true
+frame.Active = true
+frame.Selectable = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 frame.Parent = screenGui
 
 local label = Instance.new("TextLabel")
-label.Size = UDim2.new(1,0,1,0)
+label.Size = UDim2.new(1, -30, 1, 0)
+label.Position = UDim2.new(0, 10, 0, 0)
 label.BackgroundTransparency = 1
 label.Font = Enum.Font.GothamBold
 label.TextSize = 14
@@ -30,6 +33,16 @@ label.Text = "Next Killer: ..."
 label.TextXAlignment = Enum.TextXAlignment.Left
 label.TextTruncate = Enum.TextTruncate.None
 label.Parent = frame
+
+local dragHandle = Instance.new("TextLabel")
+dragHandle.Size = UDim2.new(0, 30, 1, 0)
+dragHandle.Position = UDim2.new(1, -30, 0, 0)
+dragHandle.BackgroundTransparency = 1
+dragHandle.Text = "⋮⋮"
+dragHandle.TextSize = 18
+dragHandle.TextColor3 = Color3.fromRGB(200,200,200)
+dragHandle.Font = Enum.Font.GothamBold
+dragHandle.Parent = frame
 
 local function GetNextKillerName()
     local players = Players:GetPlayers()
@@ -53,7 +66,7 @@ local function GetNextKillerName()
 end
 
 local function Update()
-    local success, err = pcall(function()
+    pcall(function()
         local team = LocalPlayer.Team
         local role = "Spectator"
         if team then
@@ -65,40 +78,30 @@ local function Update()
             local nextName = GetNextKillerName()
             label.Text = "Next Killer: " .. nextName
             label.TextColor3 = nextName == "YOU" and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,80,80)
-            print("[NextKiller] Updated: " .. label.Text) -- DEBUG
         else
             label.Text = "Next Killer: InMatch"
             label.TextColor3 = Color3.fromRGB(255,80,80)
         end
     end)
-    if not success then
-        label.Text = "Next Killer: Error"
-        warn("[NextKiller] Error: " .. tostring(err))
-    end
 end
 
--- Update loop setiap 1 detik (lebih stabil)
-local updateTask
-updateTask = task.spawn(function()
+local updateTask = task.spawn(function()
     while true do
         task.wait(1)
         Update()
     end
 end)
 
--- Toggle visibility dengan tombol M
-local inputConn
-inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+local inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.M then
         frame.Visible = not frame.Visible
     end
 end)
 
--- Simpan referensi untuk cleanup nanti
-screenGui._cleanup = {
-    task = updateTask,
-    conn = inputConn
-}
+screenGui.Destroying:Connect(function()
+    if updateTask then coroutine.close(updateTask) end
+    if inputConn then inputConn:Disconnect() end
+end)
 
 return screenGui
