@@ -1,13 +1,15 @@
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
 local LocalPlayer = Players.LocalPlayer
-local UIS = game:GetService("UserInputService")
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "NextKillerStandalone"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = game.CoreGui
 
-local function EnableDrag(frame)
+-- Smooth Drag
+local function MakeDraggable(frame)
     local dragging = false
     local dragStart
     local startPos
@@ -26,7 +28,7 @@ local function EnableDrag(frame)
         end
     end)
 
-    UIS.InputChanged:Connect(function(input)
+    UserInputService.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
 
@@ -41,13 +43,13 @@ local function EnableDrag(frame)
 end
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 230, 0, 28)
+frame.Size = UDim2.new(0,220,0,30)
 
--- Nyambung sama InfoGui
-frame.Position = UDim2.new(0, 535, 0, 10)
+-- Posisi nyambung sama InfoGui
+frame.Position = UDim2.new(0,538,0,10)
 
-frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
-frame.BackgroundTransparency = 0.2
+frame.BackgroundColor3 = Color3.fromRGB(14,14,14)
+frame.BackgroundTransparency = 0.15
 frame.BorderSizePixel = 0
 frame.Active = true
 frame.Parent = screenGui
@@ -58,22 +60,31 @@ corner.Parent = frame
 
 local stroke = Instance.new("UIStroke")
 stroke.Color = Color3.fromRGB(255,255,255)
-stroke.Transparency = 0.4
 stroke.Thickness = 1
+stroke.Transparency = 0.65
 stroke.Parent = frame
 
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(28,28,28)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(14,14,14))
+}
+gradient.Rotation = 90
+gradient.Parent = frame
+
 local label = Instance.new("TextLabel")
-label.Size = UDim2.new(1,0,1,0)
+label.Size = UDim2.new(1,-16,1,0)
+label.Position = UDim2.new(0,8,0,0)
 label.BackgroundTransparency = 1
 label.Font = Enum.Font.GothamBold
 label.TextSize = 13
+label.TextXAlignment = Enum.TextXAlignment.Left
 label.TextStrokeTransparency = 0.8
-label.TextXAlignment = Enum.TextXAlignment.Center
-label.Text = "Next Killer: ..."
 label.TextColor3 = Color3.fromRGB(255,80,80)
+label.Text = "Next Killer: ..."
 label.Parent = frame
 
-EnableDrag(frame)
+MakeDraggable(frame)
 
 local function GetNextKillerName()
     local players = Players:GetPlayers()
@@ -88,14 +99,14 @@ local function GetNextKillerName()
         local allow = p:GetAttribute("AllowKiller") == true
         local chance = tonumber(p:GetAttribute("KillerChance")) or 0
 
-        table.insert(sorted, {
+        table.insert(sorted,{
             p = p,
             allow = allow,
             chance = chance
         })
     end
 
-    table.sort(sorted, function(a,b)
+    table.sort(sorted,function(a,b)
         if a.allow ~= b.allow then
             return a.allow
         end
@@ -138,7 +149,7 @@ local function Update()
         if role == "Spectator" then
             local nextName = GetNextKillerName()
 
-            label.Text = "Next Killer: " .. nextName
+            label.Text = "Next Killer: "..nextName
 
             label.TextColor3 =
                 nextName == "YOU"
@@ -151,30 +162,10 @@ local function Update()
     end)
 end
 
-local updateTask = task.spawn(function()
+task.spawn(function()
     while true do
         task.wait(1)
         Update()
-    end
-end)
-
-local inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then
-        return
-    end
-
-    if input.KeyCode == Enum.KeyCode.M then
-        frame.Visible = not frame.Visible
-    end
-end)
-
-screenGui.Destroying:Connect(function()
-    if updateTask then
-        coroutine.close(updateTask)
-    end
-
-    if inputConn then
-        inputConn:Disconnect()
     end
 end)
 
