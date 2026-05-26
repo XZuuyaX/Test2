@@ -1,5 +1,3 @@
-
-
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
@@ -10,58 +8,130 @@ screenGui.Name = "NextKillerStandalone"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = game.CoreGui
 
+local function EnableDrag(frame)
+    local dragging = false
+    local dragInput, startPos, startFramePos
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            startPos = input.Position
+            startFramePos = frame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            local delta = input.Position - startPos
+
+            frame.Position = UDim2.new(
+                startFramePos.X.Scale,
+                startFramePos.X.Offset + delta.X,
+                startFramePos.Y.Scale,
+                startFramePos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 36)
-frame.Position = UDim2.new(1, -230, 0, 10) -- pojok kanan atas
-frame.BackgroundTransparency = 0.5
-frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+frame.Size = UDim2.new(0, 220, 0, 28)
+frame.Position = UDim2.new(1, -230, 0, 10)
+frame.BackgroundTransparency = 0.2
+frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
 frame.BorderSizePixel = 0
-frame.Draggable = true
 frame.Active = true
 frame.Selectable = true
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 frame.Parent = screenGui
 
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0,8)
+corner.Parent = frame
+
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 1
+stroke.Transparency = 0.35
+stroke.Color = Color3.fromRGB(255,255,255)
+stroke.Parent = frame
+
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(30,30,30)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(15,15,15))
+}
+gradient.Rotation = 90
+gradient.Parent = frame
+
 local label = Instance.new("TextLabel")
-label.Size = UDim2.new(1, -30, 1, 0)
+label.Size = UDim2.new(1, -14, 1, 0)
 label.Position = UDim2.new(0, 10, 0, 0)
 label.BackgroundTransparency = 1
 label.Font = Enum.Font.GothamBold
-label.TextSize = 14
+label.TextSize = 13
 label.TextColor3 = Color3.fromRGB(255,80,80)
 label.Text = "Next Killer: ..."
 label.TextXAlignment = Enum.TextXAlignment.Left
-label.TextTruncate = Enum.TextTruncate.None
+label.TextStrokeTransparency = 0.8
 label.Parent = frame
 
-local dragHandle = Instance.new("TextLabel")
-dragHandle.Size = UDim2.new(0, 30, 1, 0)
-dragHandle.Position = UDim2.new(1, -30, 0, 0)
-dragHandle.BackgroundTransparency = 1
-dragHandle.Text = "⋮⋮"
-dragHandle.TextSize = 18
-dragHandle.TextColor3 = Color3.fromRGB(200,200,200)
-dragHandle.Font = Enum.Font.GothamBold
-dragHandle.Parent = frame
+EnableDrag(frame)
 
 local function GetNextKillerName()
     local players = Players:GetPlayers()
-    if #players == 0 then return "Unknown" end
+
+    if #players == 0 then
+        return "Unknown"
+    end
+
     local sorted = {}
+
     for _, p in ipairs(players) do
         local allow = p:GetAttribute("AllowKiller") == true
         local chance = tonumber(p:GetAttribute("KillerChance")) or 0
-        table.insert(sorted, {p=p, allow=allow, chance=chance})
+
+        table.insert(sorted, {
+            p = p,
+            allow = allow,
+            chance = chance
+        })
     end
+
     table.sort(sorted, function(a,b)
-        if a.allow ~= b.allow then return a.allow end
+        if a.allow ~= b.allow then
+            return a.allow
+        end
+
         return a.chance > b.chance
     end)
+
     local nk = sorted[1] and sorted[1].p
-    if not nk then return "Unknown" end
-    if nk == LocalPlayer then return "YOU" end
+
+    if not nk then
+        return "Unknown"
+    end
+
+    if nk == LocalPlayer then
+        return "YOU"
+    end
+
     local killerName = nk:GetAttribute("SelectedKiller")
-    if killerName and killerName ~= "" then return tostring(killerName) end
+
+    if killerName and killerName ~= "" then
+        return tostring(killerName)
+    end
+
     return nk.Name
 end
 
@@ -69,15 +139,24 @@ local function Update()
     pcall(function()
         local team = LocalPlayer.Team
         local role = "Spectator"
+
         if team then
-            if team.Name == "Killer" then role = "Killer"
-            elseif team.Name == "Survivors" then role = "Survivor"
+            if team.Name == "Killer" then
+                role = "Killer"
+            elseif team.Name == "Survivors" then
+                role = "Survivor"
             end
         end
+
         if role == "Spectator" then
             local nextName = GetNextKillerName()
+
             label.Text = "Next Killer: " .. nextName
-            label.TextColor3 = nextName == "YOU" and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,80,80)
+
+            label.TextColor3 =
+                nextName == "YOU"
+                and Color3.fromRGB(255,200,0)
+                or Color3.fromRGB(255,80,80)
         else
             label.Text = "Next Killer: InMatch"
             label.TextColor3 = Color3.fromRGB(255,80,80)
@@ -93,15 +172,23 @@ local updateTask = task.spawn(function()
 end)
 
 local inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
+    if gameProcessed then
+        return
+    end
+
     if input.KeyCode == Enum.KeyCode.M then
         frame.Visible = not frame.Visible
     end
 end)
 
 screenGui.Destroying:Connect(function()
-    if updateTask then coroutine.close(updateTask) end
-    if inputConn then inputConn:Disconnect() end
+    if updateTask then
+        coroutine.close(updateTask)
+    end
+
+    if inputConn then
+        inputConn:Disconnect()
+    end
 end)
 
 return screenGui
