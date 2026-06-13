@@ -1,4 +1,4 @@
-local URL = "https://raw.githubusercontent.com/USER/REPO/main/script.lua"
+local URL = "https://raw.githubusercontent.com/XZuuyaX/Test2/main/rj.lua"
 
 local queued = string.format([[
     task.wait(5)
